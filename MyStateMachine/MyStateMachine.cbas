@@ -1,0 +1,147 @@
+/*
+********************************************************************
+*  Datei:       MyStateMachine.cbas
+*  Version:     1.0
+*  Autor:       F. Rhyner
+*  Datum:       10.6.2014
+*  Funktion:    PRO-BOT128 als Zustandsmaschine
+********************************************************************
+*/
+
+   ' Globale Konstanten --------------------------------------------
+   Dim uiColBlack As Word
+   Dim uiState As Word
+
+Sub main()
+
+   '****** Hauptprogramm *******************************************
+
+   '------ Initialisierung des Roboters ---------------------------
+   PRO_BOT128_INIT()
+   LCD_INIT()
+
+   '------ Applikation ---------------------------------------------
+   DisplayStartupText()
+   ShowAkkuVoltage()
+   Sound()
+   uiState = 1
+
+   Do While True
+     Select Case uiState
+       Case 1
+          State1()
+       Case 2
+          State2()
+       Case 3
+          State3()
+     End Case
+   End While
+End Sub
+
+
+Sub State1()
+
+   '***** Zustand 1 *************************************************
+   Dim uiValLeft As Word
+
+   ShowStateValue()
+   FLL_ON()
+   Do
+     ' Wert LDR links einlesen
+     uiValLeft = LDR_LEFT()
+     If (uiValLeft > 500) Then
+       ' LDR links abgedunkelt
+       FLL_OFF()
+       uiState = 2
+     End If
+   Loop While uiState = 1
+End Sub
+
+
+Sub State2()
+
+   '***** Zustand 2 *************************************************
+   Dim uiValRight As Word
+
+   ShowStateValue()
+   FLR_ON()
+   Do
+     ' Wert LDR rechts einlesen
+     uiValRight = LDR_RIGHT()
+     If (uiValRight > 500) Then
+       ' LDR rechts abgedunkelt
+       FLR_OFF()
+       uiState = 3
+     End If
+   Loop While uiState = 2
+End Sub
+
+
+Sub State3()
+
+   '***** Zustand 3 *************************************************
+   Dim uiLoopCounter As Word
+
+   ShowStateValue()
+   uiLoopCounter = 0
+   Do
+     If (uiLoopCounter > 10) Then
+       uiState = 1
+       Sound()
+     End If
+
+     DELAY_MS(200)
+     uiLoopCounter = uiLoopCounter + 1
+     ShowLoopValue(uiLoopCounter)
+   Loop While uiState = 3
+End Sub
+
+
+Sub DisplayStartupText ()
+
+   '***** Ausgabe Starttext auf LCD-Display ************************
+   LCD_WRITE_TEXT("PRO-BOT128")
+   DELAY_MS(2000)
+   LCD_CLEAN_SCREEN()
+   LCD_WRITE_TEXT("Automat")
+End Sub
+
+
+Sub ShowAkkuVoltage()
+
+   '***** Ausgabe Betriebssapannung auf LCD-Display ****************
+   Dim sngValue As Single
+
+   sngValue = AKKU_SPG()
+   LCD_SET_CURSOR (1,12)
+   LCD_WRITE_FLOAT(sngValue, 2)
+   LCD_WRITE_TEXT("V" )
+End Sub
+
+
+Sub ShowStateValue()
+
+   '***** Ausgabe Zustandswert auf LCD-Display **********************
+   LCD_SET_CURSOR (2,1)
+   LCD_WRITE_TEXT("State=")
+   LCD_WRITE_WORD(uiState,1)
+End Sub
+
+
+Sub ShowLoopValue(uiCounter As Word)
+
+   '***** Ausgabe Schleifenzaehler auf LCD-Display *****************
+   LCD_SET_CURSOR (2,11)
+   LCD_WRITE_TEXT("C=")
+   LCD_WRITE_WORD(uiCounter,4)
+End Sub
+
+
+Sub Sound ()
+
+   '***** Tonfolge Sound ********************************************
+   ' Tonfolge
+   BEEP(100, 200)
+   BEEP(170, 150)
+   BEEP(100, 200)
+End Sub

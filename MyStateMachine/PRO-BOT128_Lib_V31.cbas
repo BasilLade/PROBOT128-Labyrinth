@@ -1,0 +1,1098 @@
+'*******************************************************************************
+'Projektname:       PRO-BOT128_Lib_V31.cprj
+'Benötigte Libs´s:  IntFunc_lib.cc
+'Routinen:          PRO-BOT128_Lib_V3.cbas
+'Autor:             Ulli Sommer / F.Rhyner
+'Datum:             24.03.2009 / 3.5.2014 / 23.4.2015
+'Funktion:          PRO-BOT128 Function Lib (Experimente mit den PRO-BOT128)
+'                   fuer C-Control Pro IDE ab Version 2.31
+'*******************************************************************************
+
+'Steuerzeichen
+#define LF 0x0A
+#define CR 0x0D
+#define SPACE 0x20
+
+'I2C-Bus
+#define SCL 24
+#define SDA 25
+
+'Zustände
+#define ON 0
+#define OFF 1
+#define OUT 1
+#define IN 0
+
+'Status LEDs
+#define FLL 19
+#define FLR 18
+#define BLL 17
+#define BLR 16
+
+'Liniensensor LED
+#define Line_LED 20
+
+'Taster SW2 (Boot)
+#define Button 36
+
+'Motor Enable Leitung
+#define Motor_Enable 15
+
+'Radencoder IR-LED
+#define Encoder_IR 8
+
+'ACS (Anit-Collisions-System)
+#define PWM_IR 35
+#define IR_left 27
+#define IR_right 29
+#define TSOP 26
+
+'ADC Auflösung: 5V/1023 Steps
+#define Ref 0.00488
+
+'Negative Beschleunigung bei Zielnähe GO(xxx,xxx)
+#define Deathzone 50
+
+'Tonausgae über Noten
+'1. Oktave
+#define Tone_C1 440     '261Hz
+#define Tone_Cis1 413   '277Hz
+#define Tone_D1 392     '293Hz
+#define Tone_Dis1 371   '311Hz
+#define Tone_E1 350     '329Hz
+#define Tone_F1 330     '349Hz
+#define Tone_Fis1 312   '369Hz
+#define Tone_G1 294     '392Hz
+#define Tone_Gis1 277   '415Hz
+#define Tone_A1 262     '440Hz
+#define Tone_Ais1 247   '466Hz
+#define Tone_H1 234     '493Hz
+
+'2. Oktave
+#define Tone_C2 220     '523Hz
+#define Tone_Cis2 208   '554Hz
+#define Tone_D2 196     '587Hz
+#define Tone_Dis2 185   '622Hz
+#define Tone_E2 175     '659Hz
+#define Tone_F2 165     '698Hz
+#define Tone_Fis2 156   '739Hz
+#define Tone_G2 147     '784Hz
+#define Tone_Gis2 138   '830Hz
+#define Tone_A2 131     '880Hz
+#define Tone_Ais2 125   '932Hz
+#define Tone_H2 117     '987Hz
+
+'UART-Schnittstelle
+Dim Uart_Buffer(80) As Byte
+Dim Debug_Text(80) As Char
+Dim Daten_Buffer(80) As Byte
+Dim Buffer_Index As Integer
+
+'UART-Datenauswertung
+Dim Addr As Byte
+Dim Command1 As Byte
+Dim Command2 As Byte
+Dim Command3 As Byte
+Dim CRC As Byte
+Dim CRC_Sum As Byte
+Dim Robo_Addr As Byte
+Dim Command_Speed As Byte
+
+'Odometrie & Encoder
+#define UNIT_TICK 3
+#define SPEED_INTEGRATOR 10
+#define DEG_TICK 10
+Dim ENCODER_RIGHT As Integer
+Dim ENCODER_RIGHT_CNT As Integer
+Dim ENCODER_LEFT As Integer
+Dim ENCODER_LEFT_CNT As Integer
+Dim ODO_LEFT As Integer
+Dim ODO_RIGHT As Integer
+
+'Geschwindigkeitsregelung
+Dim left_dir As Byte
+Dim right_dir As Byte
+Dim diff_reg As Integer
+Dim speed_left As Byte
+Dim speed_right As Byte
+Dim Direction As Integer
+Dim Turn As Integer
+Dim Speed As Byte
+Dim fwd, bwd, turn_left, turn_right As Byte
+
+'Taster Variable für SW2 (Boot)
+Dim SW2 As Byte
+
+'System Uhr
+Dim rtc_cnt As Integer
+Dim Sekunde As Integer
+Dim Minute As Integer
+Dim Stunde As Integer
+
+'---[ System Initialisierung ]--------------------------------------------------
+Sub PRO_BOT128_INIT()
+
+    'SPI-Schnittstelle ausschalten
+    SPI_Disable()
+
+    'IR-LED Encoder Pin als Ausgang
+    Port_DataDirBit(Encoder_IR,1)
+
+    'Line-LED Pin als Ausgang
+    Port_DataDirBit(Line_LED,PORT_OUT)
+
+    'Status LEDs Pins als Ausgang
+    Port_DataDirBit(FLL,PORT_OUT)
+    Port_DataDirBit(FLR,PORT_OUT)
+    Port_DataDirBit(BLL,PORT_OUT)
+    Port_DataDirBit(BLR,PORT_OUT)
+
+    'Taster SW2 als Eingang + Pullup ein
+    Port_DataDirBit(Button,0)
+    Port_WriteBit(Button,1)
+
+    'ACS-System
+    Port_DataDirBit(IR_left,PORT_OUT)
+    Port_DataDirBit(IR_right,PORT_OUT)
+    Port_DataDirBit(TSOP,PORT_IN)
+
+    'Radencoder Interrupts
+    Irq_SetVect(INT_6,ENC_RIGHT)
+    Irq_SetVect(INT_7,ENC_LEFT)
+
+    'Interrupt bei jeden Flankenwechsel
+    Ext_IntEnable(6,1)
+    Ext_IntEnable(7,1)
+
+    'Taster SW2 Interrupt
+    Irq_SetVect(INT_4,BUTTON)
+    Ext_IntEnable(4,2)
+
+    'Timer 2 Interrupt
+    Irq_SetVect(INT_TIM2COMP,SYSTEM_CNT)
+
+    'I2C-Bus Initialisierung
+    I2C_Init(I2C_100kHz)
+
+    'Antrieb Initialisierung
+    Port_DataDirBit(Motor_Enable,PORT_OUT)  'Enable Pin als Ausgang
+    Timer_T1PWMX(255,1,1,PS_1)              'PWM Initialisierung
+    Timer_T1PWA(128)                        'PWM Kanal A
+    Timer_T1PWB(128)                        'PWM Kanal B
+
+    'Initialisierung auf Startzustand des Roboters
+    FLL_OFF()
+    FLR_OFF()
+    BLL_OFF()
+    BLR_OFF()
+    LINE_LED_OFF()
+    ENC_LED_OFF()
+    DRIVE_OFF()
+    ODO_RESET()
+
+    'SW2 Variable
+    SW2 = 0
+
+    'Motorregler Startwerte
+    diff_reg = 0
+    Direction = 255
+    Turn = 255
+    Speed = 0
+    fwd = 0
+    bwd = 0
+    turn_left = 0
+    turn_right = 0
+
+    'PC-BOT Interface (PRO-BOT128 Adresse)
+    Robo_Addr = 42
+
+    'RTC Startzeit festlegen z.B. 00:00:00
+    Sekunde=0
+    Minute=0
+    Stunde=0
+
+End Sub
+
+'---[ Taster SW2 über IRQ ]-----------------------------------------------------
+Sub BUTTON() As  Byte
+    SW2 = 0
+    SW2 = Irq_GetCount(INT_4)
+    Return SW2
+End Sub
+
+'---[ System Counter 10ms ]-----------------------------------------------------
+Sub SYSTEM_CNT()
+
+    'RTC "Real Time Clock"
+    rtc_cnt = rtc_cnt + 1
+    If rtc_cnt = 100 Then
+       Sekunde = Sekunde + 1
+       If Sekunde = 60 Then
+          Sekunde = 0
+          Minute = Minute + 1
+          If Minute = 60 Then
+             Minute = 0
+             Stunde = Stunde + 1
+             If Stunde = 24 Then
+                Stunde = 0
+             End If
+          End If
+       End If
+       rtc_cnt = 0
+    End If
+
+   Irq_GetCount(INT_TIM2COMP)
+
+End Sub
+
+'---[ Status LED "FRONT LED LEFT" einschalten ]---------------------------------
+Sub FLL_ON()
+    Port_WriteBit(FLL,PORT_OFF)
+End Sub
+
+'---[ Status LED "FRONT LED LEFT" ausschalten ]---------------------------------
+Sub FLL_OFF()
+    Port_WriteBit(FLL,PORT_ON)
+End Sub
+
+'---[ Status LED "FRONT LED RIGHT" einschalten ]--------------------------------
+Sub FLR_ON()
+    Port_WriteBit(FLR,PORT_OFF)
+End Sub
+
+'---[ Status LED "FRONT LED RIGHT" ausschalten ]--------------------------------
+Sub FLR_OFF()
+    Port_WriteBit(FLR,PORT_ON)
+End Sub
+
+'---[ Status LED "BACK LED LEFT" einschalten ]----------------------------------
+Sub BLL_ON()
+    Port_WriteBit(BLL,PORT_OFF)
+End Sub
+
+'---[ Status LED "BACK LED LEFT" ausschalten ]----------------------------------
+Sub BLL_OFF()
+    Port_WriteBit(BLL,PORT_ON)
+End Sub
+
+'---[ Status LED "BACK LED RIGHT" einschalten ]---------------------------------
+Sub BLR_ON()
+    Port_WriteBit(BLR,PORT_OFF)
+End Sub
+
+'---[ Status LED "BACK LED RIGHT" ausschalten ]---------------------------------
+Sub BLR_OFF()
+    Port_WriteBit(BLR,PORT_ON)
+End Sub
+
+'---[ IRQ Routine für den rechten Radencoder ]----------------------------------
+Sub ENC_RIGHT()
+    ENCODER_RIGHT_CNT = ENCODER_RIGHT_CNT + 1
+    ODO_RIGHT = ODO_RIGHT + 1
+    Irq_GetCount(INT_6)
+End Sub
+
+'---[ IRQ Routine für den linken Radencoder ]-----------------------------------
+Sub ENC_LEFT()
+    ENCODER_LEFT_CNT = ENCODER_LEFT_CNT + 1
+    ODO_LEFT = ODO_LEFT + 1
+    Irq_GetCount(INT_7)
+End Sub
+
+'---[ Odometer zurücksetzen ]----------------------------------------------------
+Sub ODO_RESET()
+    ODO_LEFT = 0
+    ODO_RIGHT = 0
+End Sub
+
+'---[ IR Encoder LED einschalten ]----------------------------------------------
+Sub ENC_LED_ON()
+    Port_WriteBit(Encoder_IR,PORT_ON)
+End Sub
+
+'---[ IR Encoder LED ausschalten ]----------------------------------------------
+Sub ENC_LED_OFF()
+    Port_WriteBit(Encoder_IR,PORT_OFF)
+End Sub
+
+'---[ Tonausgabe ]--------------------------------------------------------------
+Sub BEEP(Tone As Word, Periode As Word)
+    Timer_T0FRQ(Tone,PS_64)
+    DELAY_MS(Periode)
+    Timer_T0Stop()
+    Timer_T0FRQ(440,1)
+End Sub
+
+'---[ Geräuschpegel messen ]----------------------------------------------------
+Sub SOUND_LEVEL() As Word
+    Return GET_ADC(3)
+End Sub
+
+'---[ Lichtsensor links auslesen ]----------------------------------------------
+Sub LDR_LEFT() As Word
+    Return GET_ADC(4)
+End Sub
+
+'---[ Lichtsensor rechts auslesen ]---------------------------------------------
+Sub LDR_RIGHT() As Word
+    Return GET_ADC(5)
+End Sub
+
+'---[ Wert des linken Fototransistor des Liniensensors auslesen ]---------------
+Sub READ_LINE_LEFT() As Word
+    Return GET_ADC(2)
+End Sub
+
+'---[ Wert des rechten Fototransistor des Liniensensors auslesen ]--------------
+Sub READ_LINE_RIGHT() As Word
+    Return GET_ADC(1)
+End Sub
+
+'---[ Liniensensor LED einschalten ]--------------------------------------------
+Sub LINE_LED_ON()
+    Port_WriteBit(Line_LED,PORT_OFF)
+End Sub
+
+'---[ Liniensensor LED ausschalten ]--------------------------------------------
+Sub LINE_LED_OFF()
+    Port_WriteBit(Line_LED,PORT_ON)
+End Sub
+
+'---[ Betriebsspannung messen ]-------------------------------------------------
+Sub AKKU_SPG() As Single
+    Return (GET_ADC(0) * Ref) * 1.08  'Betriebsspannung berechnen
+End Sub
+
+'---[ Beliebigen ADC-Kanal einlesen ]-------------------------------------------
+Sub GET_ADC(Channel As Byte) As Word
+    'Uref 2,56V internal ref.
+    ADC_Set(ADC_VREF_BG,Channel)
+    Return ADC_Read()
+End Sub
+
+'---[ Antrieb einschalten ]-----------------------------------------------------
+Sub DRIVE_ON()
+    Port_WriteBit(Motor_Enable,1)
+End Sub
+
+'---[ Antrieb ausschalten ]-----------------------------------------------------
+Sub DRIVE_OFF()
+    Port_WriteBit(Motor_Enable,0)
+End Sub
+
+'---[ Geschwindigkeit und Richtung über PWM-Werte einstellen ]------------------
+Sub DRIVE(left As Byte, right As Byte)
+
+    '---> Direkte PWM Ansteuerung
+    '     128 = stopp
+    '     128 bis 255 = vorwärts
+    '     1 bis 128 = rückwärts
+
+    'Begrenzung
+    If left > 255 Then left = 255 : End If
+    If left < 1 Then left = 1 : End If
+    If right > 255 Then right = 255 : End If
+    If right < 1 Then right = 1 : End If
+
+    Timer_T1PWA(left)
+    Timer_T1PWB(right)
+
+End Sub
+
+'---[ Motor-Drehrichtung 1=FWD ; 0=RWD ; 255=STOP ]-----------------------------
+Sub MOTOR_DIR(left As Byte, right As Byte)
+    'FWD = vorwärts
+    'RWD = rückwärts
+    left_dir = left
+    right_dir = right
+End Sub
+
+'---[ Alternative Geschwindigkeits Einstellung ]--------------------------------
+Sub MOTOR_POWER(left As Byte, right As Byte)
+
+    'Drehrichtung muss zuvor mit MOTOR_DIR(xxx,xxx) festgelegt werden!
+
+    'Begrenzung
+    left = left / 2
+    right = right / 2
+
+    'linker Motor 0 bis 255
+    'vorwärts
+    If left_dir = 1 Then
+       Timer_T1PWA(128+left)
+    End If
+
+    'linker Motor 0 bis 255
+    'rückwärts
+    If left_dir = 0 Then
+       Timer_T1PWA(128-left)
+    End If
+
+    'Motor links stopp
+    If left_dir = 255 Then
+       Timer_T1PWA(128)
+    End If
+
+
+    'rechter Motor 0 bis 255
+    'vorwärts
+    If right_dir = 1 Then
+       Timer_T1PWB(128+right)
+    End If
+
+    'rechter Motor 0 bis 255
+    'rückwärts
+    If right_dir = 0 Then
+       Timer_T1PWB(128-right)
+    End If
+
+    'Motor rechts stopp
+    If right_dir = 255 Then
+       Timer_T1PWB(128)
+    End If
+
+End Sub
+
+'---[ Antrieb anhalten ]--------------------------------------------------------
+Sub MOTOR_STOP()
+    Direction = 255
+    Turn = 255
+    Speed = 0
+    MOTOR_DIR(255,255)
+    MOTOR_POWER(128,128)
+    diff_reg = 0
+    fwd = 0 : bwd = 0 : turn_left = 0 : turn_right = 0
+End Sub
+
+'---[ Geregelte vorwärts fahren ]-----------------------------------------------
+Sub DRIVE_FWD(speed As Byte, time As Integer)
+    'speed Werte von 1 bis 200
+    'time gibt an wie lange vorwärts gefahren werden soll (100ms Einheiten)
+    'wird bei time eine 0 eingetragen, wird nach verlassen der Routine
+    'der Antrieb nicht von selber wieder angehalten!!!
+    Dim x As Integer
+    For x = 0 To time '100ms steps
+        Turn = 255
+        Direction = 1
+        bwd = 0 : turn_left = 0 : turn_right = 0
+        If fwd = 0 Then
+          fwd = 1
+          speed_left = speed
+          speed_right = speed
+          Speed = speed
+        End If
+        REGULATOR()
+    Next
+    If time >= 1 Then MOTOR_STOP() : End If
+End Sub
+
+'---[ Geregelte rückwärts fahren ]----------------------------------------------
+Sub DRIVE_BWD(speed As Byte, time As Integer)
+    'speed Werte von 1 bis 200
+    'time gibt an wie lange rückwärts gefahren werden soll (100ms Einheiten)
+    'wird bei time eine 0 eingetragen, wird nach verlassen der Routine
+    'der Antrieb nicht von selber wieder angehalten!!!
+    Dim x As Integer
+    For x = 0 To time
+        Turn = 255
+        Direction = -1
+        fwd = 0 : turn_left = 0 : turn_right = 0
+        If bwd = 0 Then
+          bwd = 1
+          speed_left = speed
+          speed_right = speed
+          Speed = speed
+        End If
+        REGULATOR()
+    Next
+    If time >= 1 Then MOTOR_STOP() : End If
+End Sub
+
+'---[ Geregelte links drehen ]--------------------------------------------------
+Sub TURN_LEFT(speed As Byte, time As Integer)
+    'speed Werte von 1 bis 200
+    'time gibt an wie lange gedreht werden soll (100ms Einheiten)
+    'wird bei time eine 0 eingetragen, wird nach verlassen der Routine
+    'der Antrieb nicht von selber wieder angehalten!!!
+    Dim x As Integer
+    For x = 0 To time
+        Direction = 255
+        Turn = -1
+        fwd = 0 : bwd = 0 : turn_right = 0
+        If turn_left = 0 Then
+          turn_left = 1
+          speed_left = speed
+          speed_right = speed
+          Speed = speed
+        End If
+        REGULATOR()
+    Next
+    If time >= 1 Then MOTOR_STOP() : End If
+End Sub
+
+'---[ Geregelte rechts drehen ]-------------------------------------------------
+Sub TURN_RIGHT(speed As Byte, time As Integer)
+    'speed Werte von 1 bis 200
+    'time gibt an wie lange gedreht werden soll (100ms Einheiten)
+    'wird bei time eine 0 eingetragen, wird nach verlassen der Routine
+    'der Antrieb nicht von selber wieder angehalten!!!
+    Dim x As Integer
+    For x = 0 To time
+        Direction = 255
+        Turn = 1
+        fwd = 0 : bwd = 0 : turn_left = 0
+        If turn_right = 0 Then
+          turn_right = 1
+          speed_left = speed
+          speed_right = speed
+          Speed = speed
+        End If
+        REGULATOR()
+    Next
+    If time >= 1 Then MOTOR_STOP() : End If
+End Sub
+
+'---[ Regelwerte berechnen ]----------------------------------------------------
+Sub REGULATOR()
+
+       ENCODER_LEFT = ENCODER_LEFT_CNT
+       ENCODER_RIGHT = ENCODER_RIGHT_CNT
+       ENCODER_LEFT_CNT = 0
+       ENCODER_RIGHT_CNT = 0
+
+       'vorwärts
+       If Direction = 1 And Speed > 0 Then
+          MOTOR_DIR(1,1)
+       End If
+
+       'rückwärts
+       If Direction = -1 And Speed > 0 Then
+          MOTOR_DIR(0,0)
+       End If
+
+       'rechts drehen
+       If Turn = 1 And Speed > 0 Then
+          MOTOR_DIR(1,0)
+       End If
+
+       'links drehen
+       If Turn = -1 And Speed > 0 Then
+          MOTOR_DIR(0,1)
+       End If
+
+       '---> Differenz berechnen
+
+       diff_reg = ENCODER_LEFT - ENCODER_RIGHT
+
+       '---> Drehzahl ausgleichen
+
+       If (diff_reg > 0) Then
+          'linkes Rad schneller als das rechte?
+          If ((speed_left > Speed) Or (speed_right > 250)) Then
+              speed_left = speed_left - SPEED_INTEGRATOR
+           Else
+              speed_right = speed_right + SPEED_INTEGRATOR
+          End If
+       End If
+
+       If (diff_reg < 0) Then
+         'rechtes Rad schneller als das linke?
+         If ((speed_right > Speed) Or (speed_left > 250)) Then
+             speed_right = speed_right - SPEED_INTEGRATOR
+          Else
+             speed_left = speed_left + SPEED_INTEGRATOR
+         End If
+       End If
+
+       MOTOR_POWER(speed_left,speed_right)
+
+       DELAY_MS(100)
+
+End Sub
+
+'---[ GO(Distance As cm, Speed 1 To 255) ]-----------------------------------
+Sub GO(distance As Integer, speed As Byte, return_wait As Integer)
+
+    'Distance: vorwärts = +1 To +32767cm ; rückwärts = -1 To -32768cm
+    'Speed   : Geschwindigkeit 128 To 220
+
+    Dim enc_count As Integer
+    Dim tot_count As Integer
+    enc_count = 0
+    tot_count = 0
+
+    'Antrieb sicherheitshalber mal anhalten
+    MOTOR_STOP()
+
+    'Impulse in cm umrechnen
+    enc_count = ABS_INT(distance) * UNIT_TICK
+
+    'Odometer zurücksetzen
+    ODO_RESET()
+
+    'Go To... jetzt bewegen wir uns!
+    Do While (tot_count < enc_count)
+
+       'Neue Odometerwerte aufaddieren
+       tot_count = tot_count + (ODO_LEFT + ODO_RIGHT / 2)
+
+       'Odometer zurücksetzen
+       ODO_RESET()
+
+       'Ziel fast erreicht? --> langsamer werden
+       If tot_count > (enc_count - Deathzone) Then
+          speed = 140
+       End If
+
+       'Antrieb ansteuern
+       If distance < -0 Then
+          DRIVE_BWD(speed,0)
+          BLL_ON()
+          BLR_ON()
+       ElseIf distance > 0 Then
+          DRIVE_FWD(speed,0)
+          FLL_ON()
+          FLR_ON()
+       End If
+
+    End While
+
+    'Antrieb anhalten und die vorgegebene Zeit warten bevor wir zurückspringen
+    MOTOR_STOP()
+    BLL_OFF()
+    BLR_OFF()
+    FLL_OFF()
+    FLR_OFF()
+    DELAY_MS(return_wait)
+
+End Sub
+
+'---[TURN(Degrees As Grad, Speed 1 To 255) ]------------------------------------
+Sub TURN(degrees As Integer, speed As Byte, return_wait As Integer)
+
+    'Degrees: Winkelangabe von 1 bis 360° = rechts drehen ; -1 To -360 = links drehen
+    'Speed  : Drehgeschwindigkeit von 1 bis 200
+
+    Dim enc_count As Integer
+    Dim tot_count As Integer
+
+    'Variablen Initialisieren
+    tot_count = 0
+    enc_count = 0
+
+    'Impulse in Grad umrechnen
+    enc_count  = ABS_INT(degrees) * DEG_TICK
+    enc_count = enc_count / 36
+
+    'Odometer zurücksetzen
+    ODO_RESET()
+
+    'Jetzt drehen wir uns mal...
+    Do While (tot_count < enc_count)
+
+       tot_count = tot_count + (ODO_LEFT + ODO_RIGHT / 2)
+
+       'Odometer zurücksetzen
+       ODO_RESET()
+
+       'Antrieb ansteuern
+       If degrees < -1 Then
+          TURN_LEFT(speed,0)
+          FLL_ON()
+          BLL_ON()
+       ElseIf degrees > 0 Then
+          TURN_RIGHT(speed,0)
+          FLR_ON()
+          BLR_ON()
+       End If
+
+    End While
+
+    'Antrieb anhalten und die vorgegebene Zeit warten bevor wir zurückspringen
+    MOTOR_STOP()
+    BLL_OFF()
+    BLR_OFF()
+    FLL_OFF()
+    FLR_OFF()
+    DELAY_MS(return_wait)
+
+End Sub
+
+'---[ ACS System ]--------------------------------------------------------------
+Sub ACS_INIT(sensity As Byte)
+    'PWM für das ACS-System einstellen
+    'Timer_T3PWM(Par1,Par2,PS);
+    'Period = Par1*PS/FOSC (51*8/14,7456MHz=27,66 µs)  = 36Khz  Wert=51
+    'Pulse  = Par2*PS/FOSC (25*8/14,7456MHz=13,56 µs) On Time
+    'Timer_T3PWM(Word period,Word PW0,Byte PS) '36Khz
+    'Mit Par1, Par2 kann die Entfernung eingestellt werden
+    'muss teilweise angepasst werden (Roboter spezifisch)
+    Port_WriteBit(IR_left,PORT_ON)
+    Port_WriteBit(IR_right,PORT_ON)
+    Timer_T3PWM(51,sensity,PS_8)
+End Sub
+
+'---[ IR-UART-INIT ]------------------------------------------------------------
+Sub IR_UART_INIT()
+    'PWM für die IR-Datenübertragung einstellen
+    'Timer_T3PWM(Par1,Par2,PS);
+    'Period = Par1*PS/FOSC (51*8/14,7456MHz=27,66 µs)  = 36Khz
+    'Pulse  = Par2*PS/FOSC (25*8/14,7456MHz=13,56 µs) On Time
+    'Timer_T3PWM(Word period,Word PW0,Byte PS) '36Khz
+    Port_WriteBit(IR_left,PORT_ON)
+    Port_WriteBit(IR_right,PORT_ON)
+    Timer_T3PWM(51,25,PS_8)
+End Sub
+
+'---[ "ACS" Hindernis rechts? ]-------------------------------------------------
+Sub ACS_RIGHT() As Byte
+    Dim ACS_Right As Byte
+    Port_WriteBit(IR_left,PORT_ON)
+    Port_WriteBit(IR_right,PORT_OFF)
+    DELAY_MS(5)
+    ACS_Right = Port_ReadBit(TSOP)
+    Port_WriteBit(IR_right,PORT_ON)
+    DELAY_MS(1)
+    Return ACS_Right
+End Sub
+
+'---[ "ACS" Hindernis links? ]--------------------------------------------------
+Sub ACS_LEFT() As Byte
+    Dim ACS_Left As Byte
+    Port_WriteBit(IR_right,PORT_ON)
+    Port_WriteBit(IR_left,PORT_OFF)
+    DELAY_MS(5)
+    ACS_Left = Port_ReadBit(TSOP)
+    Port_WriteBit(IR_left,PORT_ON)
+    DELAY_MS(1)
+    Return ACS_Left
+End Sub
+
+'---[ Verzögerungs Routine ]----------------------------------------------------
+Sub DELAY_MS(time As Integer)
+    'Der Interpreter wird mit dieser Routine nicht komplett angehalten
+    'nicht sonderlich präzise, aber die bessere alternative zu AbsDelay!
+    Dim x As Integer
+    Dim y As Integer
+    For x = 0 To time
+       For y = 0 To 60 : Next
+    Next
+End Sub
+
+'---[ Absolte Integer ]---------------------------------------------------------
+Sub ABS_INT(Val As Integer) As Integer
+    'Minuswerte werden Positiv gerechnet
+    Dim X_Save As Integer
+    If Val < -0 Then
+       X_Save = Val
+       Val = X_Save - Val
+       Val = Val - X_Save
+       Return Val
+      Else
+       Return Val
+    End If
+End Sub
+
+'---[ Aus einen Lowbyte und einen Highbyte eine Word Variable zusammenstellen]-
+Sub MAKE_WORD(a As Byte, b As Byte) As Word
+    Return (a << 8) + b
+End Sub
+
+'---[ UART 0 Initialisieren ]---------------------------------------------------
+Sub UART_0_INIT()
+    'Init RS232: 19200 bps, 8 Bit, 1 Stop, NP
+    Serial_Init_IRQ(0,Uart_Buffer,40,70,SR_8BIT Or SR_1STOP Or SR_NO_PAR,SR_BD19200)
+End Sub
+
+'---[ UART 1 Initialisieren ]---------------------------------------------------
+Sub UART_1_INIT()
+    'Init RS232: 2400 bps, 8 Bit, 1 Stop, NP
+    Serial_Init_IRQ(1,Uart_Buffer,40,70,SR_8BIT Or SR_1STOP Or SR_NO_PAR,SR_BD2400)
+End Sub
+
+'---[ Ein CR+LF aus den UART schreiben ]----------------------------------------
+Sub NEWLINE(Com As Byte)
+    Serial_Write(Com,CR)
+    Serial_Write(Com,LF)
+    DELAY_MS(50)
+End Sub
+
+'---[ Einen Text aus den UART schreiben ]---------------------------------------
+Sub PRINT(Com As Byte, ByRef serial_text As Char)
+    Serial_WriteText(Com,serial_text)
+    DELAY_MS(50)
+End Sub
+
+'---[ Einen Text + CR/LF aus den UART schreiben ]-------------------------------
+Sub PRINTLN(Com As Byte, ByRef serial_text As Char)
+    Serial_WriteText(Com,serial_text)
+    NEWLINE(Com)
+    DELAY_MS(50)
+End Sub
+
+'---[ Eine Integer Variable aus den UART schreiben ]----------------------------
+Sub PRINT_INT(Com As Byte, Val As Integer)
+    Dim text(10) As Char
+    Str_WriteInt(Val,text,0)
+    PRINT(Com,text)
+End Sub
+
+'---[ Eine Word Variable aus den UART schreiben ]-------------------------------
+Sub PRINT_WORD(Com As Byte, Val As Integer, len As Byte)
+    Dim text(6) As Char
+    Str_WriteWord(Val,10,text,0,len)
+    PRINT(Com,text)
+End Sub
+
+'---[ Eine Float Variable aus den UART schreiben ]------------------------------
+Sub PRINT_FLOAT(Com As Byte, Val As Single, Len As Byte)
+    Dim text(22) As Char
+    Str_WriteFloat(Val,Len,text,0)
+    PRINT(Com,text)
+End Sub
+
+'---[ SRF02 der Fa. Devantech auslesen (Ultraschall Sensor) ]-------------------
+Sub READ_SRF02(Slaveid As Byte) As Integer
+    Dim LSB, MSB, Temp, Slaveid_read As Byte
+    Dim tmp As Word
+    Slaveid_read = Slaveid + 1
+
+    'Messvorgang in cm starten
+    I2C_Start()
+    I2C_Write(Slaveid)
+    I2C_Write(0)
+    I2C_Write(81)
+    I2C_Stop()
+
+    DELAY_MS(100)
+
+    I2C_Start()
+    I2C_Write(Slaveid)
+    I2C_Write(2)
+    I2C_Stop()
+
+    I2C_Start()
+    I2C_Write(Slaveid_read)
+    MSB = I2C_Read_ACK()
+    LSB = I2C_Read_NACK()
+    I2C_Stop()
+    Return (MSB << 8) + LSB
+End Sub
+
+'---[ Kompass CMPS03 von Devantech auslesen ]-----------------------------------
+Sub READ_CMPS03() As Word
+    Dim tmp As Word
+    Dim LSB, MSB As Byte
+
+    'Register auswählen
+    I2C_Start()
+    I2C_Write(&HC0)
+    I2C_Write(2)
+    I2C_Stop()
+
+    'Werte holen
+    I2C_Start()
+    I2C_Write(&HC1)
+    MSB = I2C_Read_ACK()
+    LSB = I2C_Read_NACK()
+    I2C_Stop()
+    tmp = ((MSB << 8) + LSB)/10 'Ausgabe in Grad
+    Return tmp
+End Sub
+
+'---[ CMPS03 Kalibrieren ]------------------------------------------------------
+Sub CAL_CMPS03()
+    I2C_Start()
+    I2C_Write(&HC0)
+    I2C_Write(15)
+    I2C_Write(255)
+    I2C_Stop()
+End Sub
+
+Sub SAVE_CAL_CMPS03()
+    I2C_Start()
+    I2C_Write(&HC0)
+    I2C_Write(15)
+    I2C_Write(0)
+    I2C_Stop()
+End Sub
+
+'---[ PCF8574 lesen ]-----------------------------------------------------------
+Sub PCF8574_R(addr As Byte) As Byte
+    Dim Port As Byte
+    I2C_Start()
+    I2C_Write(addr)
+    Port = I2C_Read_NACK()
+    I2C_Stop()
+    Return Port
+End Sub
+
+'---[ PCF8574 schreiben ]-------------------------------------------------------
+Sub PCF8574_W(addr As Byte, command As Byte)
+    I2C_Start()
+    I2C_Write(addr)
+    I2C_Write(command)
+    I2C_Stop()
+End Sub
+
+'---[ I2C-Temperatursensor LM75 auslesen ]--------------------------------------
+Sub READ_LM75(Addr As Byte) As Single
+    Dim MSB, LSB As Byte
+    Dim Grad As Single
+
+    I2C_Start()
+    I2C_Write(Addr)
+    MSB = I2C_Read_ACK()
+    LSB = I2C_Read_NACK()
+    I2C_Stop()
+
+    If (MSB < &H80) Then
+       Grad = ((MSB * 10) + (((LSB And &H80) >> 7)*5))
+     Else
+       Grad = ((MSB * 10) + (((LSB And &H80) >> 7)*5))
+       Grad = -(2555.0-Grad)
+    End If
+
+    Return Grad/10.0
+End Sub
+
+'---[ UART Empfangsroutine ]----------------------------------------------------
+Sub UART_INPUT(Com As Byte)
+
+    Dim sz, Buffer_Cnt As Integer
+
+    Buffer_Index = 0
+    Addr = 0
+    Command1 = 0
+    Command2 = 0
+    Command3 = 0
+    CRC = 255
+
+    Buffer_Cnt = Serial_IRQ_Info(Com,RS232_FIFO_RECV)  'wie viele Char sind im Buffer?
+
+    If Buffer_Cnt <> 0 Then                            'Sind überhaupt Daten da?
+
+        Do While True                                  'Bytes holen
+         Buffer_Index = Buffer_Index + 1
+         sz=Serial_ReadExt(Com)
+         If sz <> 13 Then                              'Wurde ein CR empfangen?
+             Daten_Buffer(Buffer_Index) = sz           'Bytes ins Array schieben
+                 If sz=&H100 Then                      'bei &H100 sind keine Daten mehr im Buffer
+                 Exit                                  'Schleife verlassen
+             Else
+                 Addr = Daten_Buffer(1)                'Array Daten zuordnen
+                 Command1 = Daten_Buffer(2)
+                 Command2 = Daten_Buffer(3)
+                 Command3 = Daten_Buffer(4)
+                 CRC = Daten_Buffer(5)
+             End If
+         End If
+        End While
+
+    End If
+
+    'Prüfsumme CRC mit Xor berechnen
+    CRC_Sum = Addr Xor Command1 Xor Command2 Xor Command3
+
+    'Daten richtig empfangen? Ja --> Daten interpretieren
+    If CRC_Sum = CRC Then DATA_INTERPRET(Com) : End If
+
+End Sub
+
+'---[ Empfangene Daten interpretieren ]-----------------------------------------
+Sub DATA_INTERPRET(Com As Byte)
+
+    'RC Mode über den PC
+    'Addr = 255 : Command1 = 1 : Command2 = 1 To 4/255 : Command3 = speed
+     If Addr = Robo_Addr Then
+       If Command1 = 1 Then
+         If CRC_Sum = CRC Then
+            Command_Speed = Command3
+
+            Select Case Command2
+
+                   Case 1
+                        DRIVE_FWD(Command_Speed,0)
+                   Case 2
+                        DRIVE_BWD(Command_Speed,0)
+                   Case 3
+                        TURN_RIGHT(Command_Speed,0)
+                   Case 4
+                        TURN_LEFT(Command_Speed,0)
+                   Case 255
+                        MOTOR_STOP()
+
+            End Case
+
+         End If
+       End If
+     End If
+
+
+    'System-Status an den PC senden
+    'Addr = Robo_Addr : Command1 = 4 : Command2 = 1 Or 2 : Command3 = 0
+     If Addr = Robo_Addr Then
+       If Command1 = 4 Then
+        If Command3 = 0 Then
+         If CRC_Sum = CRC Then
+          BEEP(150,200)
+          If Command2 = 1 Then STATUS(Com) : End If
+         End If
+        End If
+       End If
+     End If
+
+
+    'Roboter reseten
+    'Addr = Robo_Addr : Command1 = 255 : Command2 = 128 : Command3 = 0
+     If Addr = Robo_Addr Then
+       If Command1 = 255 Then
+        If Command3 = 0 Then
+         If CRC_Sum = CRC Then
+            If Command2 = 128 Then
+               Debug_Text = "System reset..."
+               PRINTLN(Com,Debug_Text)
+               main()
+            End If
+         End If
+        End If
+       End If
+     End If
+
+End Sub
+
+'---[ Satus an den PC senden ]--------------------------------------------------
+Sub STATUS(Com As Byte)
+    NEWLINE(Com)
+    NEWLINE(Com)
+    Debug_Text = "*** PRO-BOT128 Status ***"
+    PRINTLN(Com,Debug_Text)
+    CLOCK(Com)
+    AKKU_STATUS(Com)
+End Sub
+
+Sub AKKU_STATUS(Com As Byte)
+    Debug_Text = "Akku : "
+    PRINT(Com,Debug_Text)
+    PRINT_FLOAT(Com,AKKU_SPG(),2)
+    Debug_Text = " Volt"
+    PRINT(Com,Debug_Text)
+    NEWLINE(Com)
+End Sub
+
+Sub CLOCK(Com As Byte)
+    Dim Sep(2) As Char
+    Debug_Text = "Clock: "
+    Sep = ":"
+    PRINT(Com,Debug_Text)
+    PRINT_WORD(Com,Stunde,2)
+    PRINT(Com,Sep)
+    PRINT_WORD(Com,Minute,2)
+    PRINT(Com,Sep)
+    PRINT_WORD(Com,Sekunde,2)
+    NEWLINE(Com)
+End Sub
+
+
+
+

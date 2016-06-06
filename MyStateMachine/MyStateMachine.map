@@ -1,0 +1,606 @@
+Globale Variablen                         Laenge    Position (RAM Anfang)
+-------------------------------------------------------------------------
+uiColBlack                                2         2     
+uiState                                   2         4     
+LCD_Address                               1         5     
+prefix                                    1         6     
+command                                   1         7     
+parameter                                 1         8     
+specialCommand                            1         9     
+Uart_Buffer                               80        89    
+Debug_Text                                80        169   
+Daten_Buffer                              80        249   
+Buffer_Index                              2         251   
+Addr                                      1         252   
+Command1                                  1         253   
+Command2                                  1         254   
+Command3                                  1         255   
+CRC                                       1         256   
+CRC_Sum                                   1         257   
+Robo_Addr                                 1         258   
+Command_Speed                             1         259   
+ENCODER_RIGHT                             2         261   
+ENCODER_RIGHT_CNT                         2         263   
+ENCODER_LEFT                              2         265   
+ENCODER_LEFT_CNT                          2         267   
+ODO_LEFT                                  2         269   
+ODO_RIGHT                                 2         271   
+left_dir                                  1         272   
+right_dir                                 1         273   
+diff_reg                                  2         275   
+speed_left                                1         276   
+speed_right                               1         277   
+Direction                                 2         279   
+Turn                                      2         281   
+Speed                                     1         282   
+fwd                                       1         283   
+bwd                                       1         284   
+turn_left                                 1         285   
+turn_right                                1         286   
+SW2                                       1         287   
+rtc_cnt                                   2         289   
+Sekunde                                   2         291   
+Minute                                    2         293   
+Stunde                                    2         295   
+Gesamtlaenge: 295 bytes
+
+
+
+Lokale Variablen                          Laenge    Position (Stackrelativ)
+---------------------------------------------------------------------------
+Funktion main()
+Gesamtlaenge: 0 bytes
+
+
+Funktion State1()
+--
+uiValLeft                                 2         0     
+Gesamtlaenge: 2 bytes
+
+
+Funktion State2()
+--
+uiValRight                                2         0     
+Gesamtlaenge: 2 bytes
+
+
+Funktion State3()
+--
+uiLoopCounter                             2         0     
+Gesamtlaenge: 2 bytes
+
+
+Funktion DisplayStartupText()
+Gesamtlaenge: 0 bytes
+
+
+Funktion ShowAkkuVoltage()
+--
+sngValue                                  4         0     
+Gesamtlaenge: 4 bytes
+
+
+Funktion ShowStateValue()
+Gesamtlaenge: 0 bytes
+
+
+Funktion ShowLoopValue()
+uiCounter                                 2         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion Sound()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_INIT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_DISPLAY_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_DISPLAY_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_SET_CURSOR()
+row                                       2         5     
+position                                  2         3     
+Gesamtlaenge: 4 bytes
+
+
+Funktion LCD_CURSOR_HOME()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_CURSOR_UNDERLINE_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_CURSOR_UNDERLINE_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_CURSOR_MOVE_LEFT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_CURSOR_MOVE_RIGHT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_CURSOR_BLINK_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_CURSOR_BLINK_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_CURSOR_BACKSPACE()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_CLEAN_SCREEN()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_SET_DISPLAY_CONTRAST()
+val                                       2         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion LCD_SET_BACKLIGHT_BRIGHTNESS()
+val                                       2         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion LCD_CREATE_CHAR()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_MOVE_DISPLAY_LEFT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_MOVE_DISPLAY_RIGHT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_SET_RS232_BAUD_RATE()
+val                                       2         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion LCD_SET_I2C_ADDRESS()
+val                                       2         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion LCD_DISPLAY_FIRMWARE_VERSION()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_DISPLAY_RS232_BAUD_RATE()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_DISPLAY_I2C_ADDRESS()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LCD_WRITE_CHAR()
+text                                      1         3     
+Gesamtlaenge: 1 bytes
+
+
+Funktion LCD_WRITE_TEXT()
+text                                      2         5     
+--
+i                                         2         0     
+Gesamtlaenge: 4 bytes
+
+
+Funktion LCD_WRITE_FLOAT()
+val                                       4         23    
+len                                       2         21    
+--
+text                                      16        2     
+i                                         2         0     
+Gesamtlaenge: 24 bytes
+
+
+Funktion LCD_WRITE_WORD()
+val                                       2         23    
+len                                       2         21    
+--
+text                                      16        2     
+i                                         2         0     
+Gesamtlaenge: 22 bytes
+
+
+Funktion LCD_WRITE_INT()
+val                                       2         21    
+--
+text                                      16        2     
+i                                         2         0     
+Gesamtlaenge: 20 bytes
+
+
+Funktion I2C_SEND()
+Gesamtlaenge: 0 bytes
+
+
+Funktion PRO_BOT128_INIT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion BUTTON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion SYSTEM_CNT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion FLL_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion FLL_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion FLR_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion FLR_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion BLL_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion BLL_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion BLR_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion BLR_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion ENC_RIGHT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion ENC_LEFT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion ODO_RESET()
+Gesamtlaenge: 0 bytes
+
+
+Funktion ENC_LED_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion ENC_LED_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion BEEP()
+Tone                                      2         5     
+Periode                                   2         3     
+Gesamtlaenge: 4 bytes
+
+
+Funktion SOUND_LEVEL()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LDR_LEFT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LDR_RIGHT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion READ_LINE_LEFT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion READ_LINE_RIGHT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LINE_LED_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion LINE_LED_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion AKKU_SPG()
+Gesamtlaenge: 0 bytes
+
+
+Funktion GET_ADC()
+Channel                                   1         3     
+Gesamtlaenge: 1 bytes
+
+
+Funktion DRIVE_ON()
+Gesamtlaenge: 0 bytes
+
+
+Funktion DRIVE_OFF()
+Gesamtlaenge: 0 bytes
+
+
+Funktion DRIVE()
+left                                      1         4     
+right                                     1         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion MOTOR_DIR()
+left                                      1         4     
+right                                     1         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion MOTOR_POWER()
+left                                      1         4     
+right                                     1         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion MOTOR_STOP()
+Gesamtlaenge: 0 bytes
+
+
+Funktion DRIVE_FWD()
+speed                                     1         13    
+time                                      2         11    
+--
+x                                         2         6     
+$$ANON0                                   6         0     
+Gesamtlaenge: 11 bytes
+
+
+Funktion DRIVE_BWD()
+speed                                     1         13    
+time                                      2         11    
+--
+x                                         2         6     
+$$ANON0                                   6         0     
+Gesamtlaenge: 11 bytes
+
+
+Funktion TURN_LEFT()
+speed                                     1         13    
+time                                      2         11    
+--
+x                                         2         6     
+$$ANON0                                   6         0     
+Gesamtlaenge: 11 bytes
+
+
+Funktion TURN_RIGHT()
+speed                                     1         13    
+time                                      2         11    
+--
+x                                         2         6     
+$$ANON0                                   6         0     
+Gesamtlaenge: 11 bytes
+
+
+Funktion REGULATOR()
+Gesamtlaenge: 0 bytes
+
+
+Funktion GO()
+distance                                  2         10    
+speed                                     1         9     
+return_wait                               2         7     
+--
+enc_count                                 2         2     
+tot_count                                 2         0     
+Gesamtlaenge: 9 bytes
+
+
+Funktion TURN()
+degrees                                   2         10    
+speed                                     1         9     
+return_wait                               2         7     
+--
+enc_count                                 2         2     
+tot_count                                 2         0     
+Gesamtlaenge: 9 bytes
+
+
+Funktion ACS_INIT()
+sensity                                   1         3     
+Gesamtlaenge: 1 bytes
+
+
+Funktion IR_UART_INIT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion ACS_RIGHT()
+--
+ACS_Right                                 1         0     
+Gesamtlaenge: 1 bytes
+
+
+Funktion ACS_LEFT()
+--
+ACS_Left                                  1         0     
+Gesamtlaenge: 1 bytes
+
+
+Funktion DELAY_MS()
+time                                      2         19    
+--
+x                                         2         14    
+y                                         2         12    
+$$ANON0                                   6         6     
+$$ANON1                                   6         0     
+Gesamtlaenge: 18 bytes
+
+
+Funktion ABS_INT()
+Val                                       2         5     
+--
+X_Save                                    2         0     
+Gesamtlaenge: 4 bytes
+
+
+Funktion MAKE_WORD()
+a                                         1         4     
+b                                         1         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion UART_0_INIT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion UART_1_INIT()
+Gesamtlaenge: 0 bytes
+
+
+Funktion NEWLINE()
+Com                                       1         3     
+Gesamtlaenge: 1 bytes
+
+
+Funktion PRINT()
+Com                                       1         5     
+serial_text                               2         3     
+Gesamtlaenge: 3 bytes
+
+
+Funktion PRINTLN()
+Com                                       1         5     
+serial_text                               2         3     
+Gesamtlaenge: 3 bytes
+
+
+Funktion PRINT_INT()
+Com                                       1         15    
+Val                                       2         13    
+--
+text                                      10        0     
+Gesamtlaenge: 13 bytes
+
+
+Funktion PRINT_WORD()
+Com                                       1         12    
+Val                                       2         10    
+len                                       1         9     
+--
+text                                      6         0     
+Gesamtlaenge: 10 bytes
+
+
+Funktion PRINT_FLOAT()
+Com                                       1         30    
+Val                                       4         26    
+Len                                       1         25    
+--
+text                                      22        0     
+Gesamtlaenge: 28 bytes
+
+
+Funktion READ_SRF02()
+Slaveid                                   1         9     
+--
+LSB                                       1         5     
+MSB                                       1         4     
+Temp                                      1         3     
+Slaveid_read                              1         2     
+tmp                                       2         0     
+Gesamtlaenge: 7 bytes
+
+
+Funktion READ_CMPS03()
+--
+tmp                                       2         2     
+LSB                                       1         1     
+MSB                                       1         0     
+Gesamtlaenge: 4 bytes
+
+
+Funktion CAL_CMPS03()
+Gesamtlaenge: 0 bytes
+
+
+Funktion SAVE_CAL_CMPS03()
+Gesamtlaenge: 0 bytes
+
+
+Funktion PCF8574_R()
+addr                                      1         4     
+--
+Port                                      1         0     
+Gesamtlaenge: 2 bytes
+
+
+Funktion PCF8574_W()
+addr                                      1         4     
+command                                   1         3     
+Gesamtlaenge: 2 bytes
+
+
+Funktion READ_LM75()
+Addr                                      1         9     
+--
+MSB                                       1         5     
+LSB                                       1         4     
+Grad                                      4         0     
+Gesamtlaenge: 7 bytes
+
+
+Funktion UART_INPUT()
+Com                                       1         7     
+--
+sz                                        2         2     
+Buffer_Cnt                                2         0     
+Gesamtlaenge: 5 bytes
+
+
+Funktion DATA_INTERPRET()
+Com                                       1         3     
+Gesamtlaenge: 1 bytes
+
+
+Funktion STATUS()
+Com                                       1         3     
+Gesamtlaenge: 1 bytes
+
+
+Funktion AKKU_STATUS()
+Com                                       1         3     
+Gesamtlaenge: 1 bytes
+
+
+Funktion CLOCK()
+Com                                       1         5     
+--
+Sep                                       2         0     
+Gesamtlaenge: 3 bytes
+
+
